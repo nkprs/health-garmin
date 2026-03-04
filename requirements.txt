@@ -1,0 +1,3 @@
+garminconnect==0.2.25
+python-dateutil==2.9.0.post0
+psycopg[binary]==3.3.3

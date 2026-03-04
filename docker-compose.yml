@@ -1,0 +1,56 @@
+services:
+  db:
+    image: postgres:16
+    environment:
+      POSTGRES_DB: bio
+      POSTGRES_USER: bio
+      POSTGRES_PASSWORD: bio
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U bio -d bio"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 5s
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    ports:
+      - "5434:5432"
+
+  garmin_export:
+    build: .
+    env_file: .env
+    environment:
+      - TZ=${TZ:-Europe/Helsinki}
+      - OUT_DIR=/data
+      - DAYS_BACK=3
+    volumes:
+      - ./data:/data
+
+  loader:
+    build: .
+    env_file: .env
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      - DB_DSN=postgresql://bio:bio@db:5432/bio
+      - IN_DIR=/data
+    volumes:
+      - ./data:/data
+    command: ["python", "load_to_pg.py"]
+
+  features:
+    build: .
+    env_file: .env
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      - DB_DSN=postgresql://bio:bio@db:5432/bio
+      - IN_DIR=/data
+    volumes:
+      - ./data:/data
+    command: ["python", "features.py"]
+
+volumes:
+  pgdata:
