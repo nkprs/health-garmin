@@ -22,7 +22,7 @@ services:
     environment:
       - TZ=${TZ:-Europe/Helsinki}
       - OUT_DIR=/data
-      - DAYS_BACK=3
+      - DAYS_BACK=${DAYS_BACK:-3}
     volumes:
       - ./data:/data
 
@@ -51,6 +51,31 @@ services:
     volumes:
       - ./data:/data
     command: ["python", "features.py"]
+
+  brief:
+    build: .
+    env_file: .env
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      - DB_DSN=postgresql://bio:bio@db:5432/bio
+      - OPENAI_MODEL=${OPENAI_MODEL:-gpt-4.1-mini}
+      - OPENAI_API_URL=${OPENAI_API_URL:-https://api.openai.com/v1/responses}
+      - OPENROUTER_API_KEY=${OPENROUTER_API_KEY:-}
+      - OPENROUTER_HTTP_REFERER=${OPENROUTER_HTTP_REFERER:-http://localhost}
+      - OPENROUTER_APP_NAME=${OPENROUTER_APP_NAME:-garmin-export}
+      - OPENAI_TIMEOUT_SEC=${OPENAI_TIMEOUT_SEC:-60}
+      - OPENAI_MAX_RETRIES=${OPENAI_MAX_RETRIES:-5}
+      - OPENAI_RETRY_BASE_SEC=${OPENAI_RETRY_BASE_SEC:-2}
+      - OPENAI_RETRY_MAX_SEC=${OPENAI_RETRY_MAX_SEC:-60}
+      - OPENAI_DRY_RUN=${OPENAI_DRY_RUN:-0}
+      - TARGET_DATE=${TARGET_DATE:-}
+      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN:-}
+      - TELEGRAM_CHAT_ID=${TELEGRAM_CHAT_ID:-}
+      - TELEGRAM_API_BASE=${TELEGRAM_API_BASE:-https://api.telegram.org}
+      - TELEGRAM_TIMEOUT_SEC=${TELEGRAM_TIMEOUT_SEC:-20}
+    command: ["python", "brief.py"]
 
 volumes:
   pgdata:
