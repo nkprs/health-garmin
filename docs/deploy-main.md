@@ -1,45 +1,35 @@
-# Автодеплой `main` (минимальный)
+# Автодеплой `main` через self-hosted runner
 
-Этот вариант делает только одно: при пуше в `main` обновляет код на сервере до `origin/main`.
+Теперь деплой выполняется не по SSH из GitHub-hosted runner, а прямо на вашем сервере через self-hosted runner.
 
-## 1. Что уже добавлено в репозиторий
+## 1. Workflow
 
-- Workflow: `.github/workflows/deploy-main.yml`
-- Триггеры:
-  - `push` в `main`
-  - ручной запуск `workflow_dispatch`
+Файл: `.github/workflows/deploy-main.yml`
 
-## 2. GitHub Secrets (Repository Settings -> Secrets and variables -> Actions)
+Триггеры:
 
-Нужно добавить:
+- `push` в `main`
+- ручной запуск `workflow_dispatch`
 
-- `DEPLOY_HOST` — IP/домен сервера
-- `DEPLOY_PORT` — SSH порт (опционально, по умолчанию `22`)
-- `DEPLOY_USER` — SSH пользователь
-- `DEPLOY_PATH` — путь к проекту на сервере (например `/opt/garmin-export`)
-- `DEPLOY_SSH_KEY` — приватный SSH ключ (лучше отдельный deploy key)
+Runner:
 
-## 3. Подготовка сервера
+- `runs-on: [self-hosted, homelab]`
 
-1. Клонировать этот репозиторий на сервер в `DEPLOY_PATH`.
-2. Убедиться, что на сервере есть доступ на `git pull` из `origin`.
-3. Убедиться, что у `DEPLOY_USER` есть права на директорию проекта.
-
-## 4. Что выполняется на сервере
-
-Workflow выполняет:
+## 2. Что делает job
 
 ```bash
-cd "$DEPLOY_PATH"
+cd /home/woolf/apps/your-project
 git fetch origin main
-git checkout main
-git pull --ff-only origin main
-```
-
-## 5. Что можно добавить следующим шагом
-
-После обновления кода можно добавить рестарт приложения, например:
-
-```bash
+git reset --hard origin/main
 docker compose up -d --build
 ```
+
+## 3. Что важно проверить на сервере
+
+- Runner зарегистрирован в этом репозитории и имеет label `homelab`.
+- В директории `/home/woolf/apps/your-project` уже есть git-репозиторий проекта.
+- Пользователь runner имеет права на `git` и `docker compose`.
+
+## 4. Настройка пути проекта
+
+Если путь отличается, поменяйте строку `cd /home/woolf/apps/your-project` в workflow.

@@ -1,13 +1,9 @@
-name: Deploy main to server
+name: Deploy
 
 on:
   push:
-    branches:
-      - main
+    branches: [main]
   workflow_dispatch:
-
-permissions:
-  contents: read
 
 concurrency:
   group: deploy-main
@@ -15,47 +11,13 @@ concurrency:
 
 jobs:
   deploy:
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, homelab]
+
     steps:
-      - name: Validate required secrets
-        env:
-          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
-          DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
-          DEPLOY_PATH: ${{ secrets.DEPLOY_PATH }}
-          DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+      - name: Deploy on homelab
         run: |
           set -euo pipefail
-          [ -n "${DEPLOY_HOST}" ] || (echo "DEPLOY_HOST is required" && exit 1)
-          [ -n "${DEPLOY_USER}" ] || (echo "DEPLOY_USER is required" && exit 1)
-          [ -n "${DEPLOY_PATH}" ] || (echo "DEPLOY_PATH is required" && exit 1)
-          [ -n "${DEPLOY_SSH_KEY}" ] || (echo "DEPLOY_SSH_KEY is required" && exit 1)
-
-      - name: Configure SSH
-        env:
-          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
-          DEPLOY_PORT: ${{ secrets.DEPLOY_PORT }}
-          DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
-        run: |
-          set -euo pipefail
-          PORT="${DEPLOY_PORT:-22}"
-          install -m 700 -d ~/.ssh
-          printf "%s\n" "${DEPLOY_SSH_KEY}" > ~/.ssh/id_ed25519
-          chmod 600 ~/.ssh/id_ed25519
-          ssh-keyscan -p "${PORT}" -H "${DEPLOY_HOST}" >> ~/.ssh/known_hosts
-
-      - name: Update project to origin/main
-        env:
-          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
-          DEPLOY_PORT: ${{ secrets.DEPLOY_PORT }}
-          DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
-          DEPLOY_PATH: ${{ secrets.DEPLOY_PATH }}
-        run: |
-          set -euo pipefail
-          PORT="${DEPLOY_PORT:-22}"
-          ssh -p "${PORT}" "${DEPLOY_USER}@${DEPLOY_HOST}" DEPLOY_PATH="${DEPLOY_PATH}" 'bash -s' <<'EOF'
-          set -euo pipefail
-          cd "${DEPLOY_PATH}"
+          cd /home/woolf/apps/health-garmin
           git fetch origin main
-          git checkout main
-          git pull --ff-only origin main
-          EOF
+          git reset --hard origin/main
+          docker compose up -d --build
