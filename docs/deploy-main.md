@@ -17,12 +17,21 @@ Runner:
 
 ## 2. Что делает job
 
+Workflow `deploy` выполняет отдельные шаги:
+
 ```bash
 cd /home/woolf/apps/your-project
 git fetch origin main
 git reset --hard origin/main
-docker compose up -d --build
+docker compose up -d db pgadmin
+docker compose up --build --abort-on-container-exit --exit-code-from garmin_export garmin_export
+docker compose up --build --abort-on-container-exit --exit-code-from loader loader
+docker compose up --build --abort-on-container-exit --exit-code-from features features
+docker compose up --build --abort-on-container-exit --exit-code-from brief brief
 ```
+
+`db` и `pgadmin` поднимаются отдельно и могут жить параллельно с batch-частью.
+`garmin_export`, `loader`, `features`, `brief` выполняются последовательно, поэтому `brief` берет уже актуальные `daily_features`.
 
 ## 3. Что важно проверить на сервере
 

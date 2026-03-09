@@ -14,10 +14,39 @@ jobs:
     runs-on: [self-hosted, homelab]
 
     steps:
-      - name: Deploy on homelab
+      - name: Update checkout
         run: |
           set -euo pipefail
           cd /home/woolf/apps/health-garmin
           git fetch origin main
           git reset --hard origin/main
-          docker compose up -d --build
+
+      - name: Start db and pgadmin
+        run: |
+          set -euo pipefail
+          cd /home/woolf/apps/health-garmin
+          docker compose up -d db pgadmin
+
+      - name: Run garmin export
+        run: |
+          set -euo pipefail
+          cd /home/woolf/apps/health-garmin
+          docker compose up --build --abort-on-container-exit --exit-code-from garmin_export garmin_export
+
+      - name: Run loader
+        run: |
+          set -euo pipefail
+          cd /home/woolf/apps/health-garmin
+          docker compose up --build --abort-on-container-exit --exit-code-from loader loader
+
+      - name: Run features
+        run: |
+          set -euo pipefail
+          cd /home/woolf/apps/health-garmin
+          docker compose up --build --abort-on-container-exit --exit-code-from features features
+
+      - name: Run brief
+        run: |
+          set -euo pipefail
+          cd /home/woolf/apps/health-garmin
+          docker compose up --build --abort-on-container-exit --exit-code-from brief brief
