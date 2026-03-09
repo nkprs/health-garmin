@@ -28,6 +28,9 @@ OPENAI_RETRY_MAX_SEC=60
 TELEGRAM_BOT_TOKEN=your_bot_token
 TELEGRAM_CHAT_ID=your_chat_id
 TELEGRAM_TIMEOUT_SEC=20
+PGADMIN_DEFAULT_EMAIL=admin@example.com
+PGADMIN_DEFAULT_PASSWORD=admin
+PGADMIN_PORT=5050
 ```
 
 Файл `.env` уже добавлен в `.gitignore`.
@@ -79,6 +82,23 @@ DATE=2026-03-04 docker compose up --build --abort-on-container-exit garmin_expor
 ```bash
 docker compose up --build --abort-on-container-exit loader
 ```
+
+### pgAdmin для просмотра Postgres
+
+```bash
+docker compose up -d pgadmin
+```
+
+После старта открой `http://localhost:5050` и войди под значениями
+`PGADMIN_DEFAULT_EMAIL` / `PGADMIN_DEFAULT_PASSWORD` из `.env`.
+
+Для подключения к базе внутри `pgAdmin` используй:
+
+- Host: `db`
+- Port: `5432`
+- Database: `bio`
+- Username: `bio`
+- Password: `bio`
 
 ### Шаг C. Расчет daily features
 

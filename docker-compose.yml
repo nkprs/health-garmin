@@ -16,6 +16,20 @@ services:
     ports:
       - "5434:5432"
 
+  pgadmin:
+    image: dpage/pgadmin4:9
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      - PGADMIN_DEFAULT_EMAIL=${PGADMIN_DEFAULT_EMAIL:-admin@example.com}
+      - PGADMIN_DEFAULT_PASSWORD=${PGADMIN_DEFAULT_PASSWORD:-admin}
+      - PGADMIN_LISTEN_PORT=80
+    volumes:
+      - pgadmin_data:/var/lib/pgadmin
+    ports:
+      - "${PGADMIN_PORT:-5050}:80"
+
   garmin_export:
     build: .
     env_file: .env
@@ -79,3 +93,4 @@ services:
 
 volumes:
   pgdata:
+  pgadmin_data:
