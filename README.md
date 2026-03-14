@@ -25,9 +25,11 @@ DAYS_BACK=3
 OPENAI_MAX_RETRIES=5
 OPENAI_RETRY_BASE_SEC=2
 OPENAI_RETRY_MAX_SEC=60
-TELEGRAM_BOT_TOKEN=your_bot_token
-TELEGRAM_CHAT_ID=your_chat_id
-TELEGRAM_TIMEOUT_SEC=20
+RESEND_API_KEY=re_xxxxxxxxx
+RESEND_FROM_EMAIL=Garmin Brief <brief@updates.example.com>
+RESEND_TO_EMAIL=you@example.com
+RESEND_TIMEOUT_SEC=20
+EMAIL_SUBJECT_PREFIX=[Garmin Brief]
 PGADMIN_DEFAULT_EMAIL=admin@example.com
 PGADMIN_DEFAULT_PASSWORD=admin
 PGADMIN_PORT=5050
@@ -47,7 +49,7 @@ OPENROUTER_APP_NAME=garmin-export
 
 Примечание: если используешь OpenRouter, ключ можно хранить в `OPENROUTER_API_KEY`.
 Скрипт также поддерживает fallback на `OPENAI_API_KEY`.
-Telegram-отправка включается автоматически, если заданы `TELEGRAM_BOT_TOKEN` и `TELEGRAM_CHAT_ID`.
+Email-отправка включается автоматически, если заданы `RESEND_API_KEY`, `RESEND_FROM_EMAIL` и `RESEND_TO_EMAIL`.
 
 ## 3. Запуск через Docker (рекомендуется)
 
@@ -121,7 +123,7 @@ OPENAI_DRY_RUN=0 docker compose up --build --abort-on-container-exit brief
 ```
 
 При `429`/`5xx` сервис делает автоматические ретраи с экспоненциальной паузой.
-После успешной генерации brief отправляется в Telegram (если Telegram env настроены).
+После успешной генерации brief отправляется на email через Resend (если Resend env настроены).
 
 Для конкретной даты:
 
@@ -176,11 +178,13 @@ python app/brief.py
 - `daily_features`: агрегированные признаки для аналитики
 - `daily_briefs`: append-only журнал запусков LLM-анализа (prompt + JSON-brief + raw response)
 
-## 7. Telegram Bot Notes
+## 7. Email Notes
 
-- Для личного чата с ботом `TELEGRAM_CHAT_ID` обычно положительный числовой id.
-- Для группы/супергруппы id обычно начинается с `-100...`.
-- Бот должен иметь право отправлять сообщения в этот чат.
+- `RESEND_API_KEY`, `RESEND_FROM_EMAIL`, `RESEND_TO_EMAIL` обязательны для отправки.
+- `RESEND_TO_EMAIL` может содержать несколько адресов через запятую.
+- `RESEND_FROM_EMAIL` можно указать в формате `Garmin Brief <brief@updates.yourdomain.com>`.
+- Для отправки на произвольные адреса Resend требует верифицированный домен.
+- Для тестов можно использовать `onboarding@resend.dev`, но только на email владельца аккаунта Resend. Это ограничение Resend.
 
 ## 8. Безопасность секретов
 

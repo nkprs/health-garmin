@@ -28,10 +28,12 @@ OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
 OPENROUTER_HTTP_REFERER = os.getenv("OPENROUTER_HTTP_REFERER", "http://localhost")
 OPENROUTER_APP_NAME = os.getenv("OPENROUTER_APP_NAME", "garmin-export")
 
-TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
-TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID")
-TELEGRAM_API_BASE = os.getenv("TELEGRAM_API_BASE", "https://api.telegram.org")
-TELEGRAM_TIMEOUT_SEC = int(os.getenv("TELEGRAM_TIMEOUT_SEC", "20"))
+RESEND_API_KEY = os.getenv("RESEND_API_KEY")
+RESEND_API_BASE = os.getenv("RESEND_API_BASE", "https://api.resend.com")
+RESEND_FROM_EMAIL = os.getenv("RESEND_FROM_EMAIL")
+RESEND_TO_EMAIL = os.getenv("RESEND_TO_EMAIL")
+RESEND_TIMEOUT_SEC = int(os.getenv("RESEND_TIMEOUT_SEC", "20"))
+EMAIL_SUBJECT_PREFIX = os.getenv("EMAIL_SUBJECT_PREFIX", "[Garmin Brief]")
 
 NUMERIC_FEATURE_KEYS = [
     "sleep_total_sec",
@@ -612,23 +614,13 @@ def call_openai(prompt_payload: dict[str, Any]) -> tuple[dict[str, Any], dict[st
     raise RuntimeError(f"OpenAI request failed after retries: {type(last_exc).__name__}: {last_exc}")
 
 
-def split_text_for_telegram(text: str, limit: int = 3900) -> list[str]:
-    chunks: list[str] = []
-    buf = ""
-    for line in text.splitlines(keepends=True):
-        if len(buf) + len(line) > limit and buf:
-            chunks.append(buf.rstrip())
-            buf = line
-        else:
-            buf += line
-    if buf.strip():
-        chunks.append(buf.rstrip())
-    if not chunks and text:
-        chunks = [text[:limit]]
-    return chunks
-
-
-def build_telegram_message(day: str, brief_id: int, model: str, brief_json: dict[str, Any], raw_response: dict[str, Any]) -> str:
+def build_email_body(
+    day: str,
+    brief_id: int,
+    model: str,
+    brief_json: dict[str, Any],
+    raw_response: dict[str, Any],
+) -> str:
     lines: list[str] = []
     lines.append(f"Daily Brief #{brief_id} | {day}")
     lines.append(f"Model: {model}")
@@ -695,33 +687,40 @@ def build_telegram_message(day: str, brief_id: int, model: str, brief_json: dict
     return "\n".join(lines)
 
 
-def send_brief_to_telegram(day: str, brief_id: int, model: str, brief_json: dict[str, Any], raw_response: dict[str, Any]) -> bool:
-    if not TELEGRAM_BOT_TOKEN or not TELEGRAM_CHAT_ID:
+def send_brief_to_email(
+    day: str,
+    brief_id: int,
+    model: str,
+    brief_json: dict[str, Any],
+    raw_response: dict[str, Any],
+) -> bool:
+    if not RESEND_API_KEY or not RESEND_FROM_EMAIL or not RESEND_TO_EMAIL:
         return False
 
-    url = f"{TELEGRAM_API_BASE.rstrip('/')}/bot{TELEGRAM_BOT_TOKEN}/sendMessage"
-    text = build_telegram_message(day, brief_id, model, brief_json, raw_response)
-    chunks = split_text_for_telegram(text)
-
-    for chunk in chunks:
-        response = requests.post(
-            url,
-            json={
-                "chat_id": TELEGRAM_CHAT_ID,
-                "text": chunk,
-                "disable_web_page_preview": True,
-            },
-            timeout=TELEGRAM_TIMEOUT_SEC,
-        )
-        if not response.ok:
-            details = response.text.strip()
-            try:
-                payload = response.json()
-                if isinstance(payload, dict):
-                    details = str(payload.get("description") or payload)
-            except ValueError:
-                pass
-            raise RuntimeError(f"Telegram API error {response.status_code}: {details}")
+    recipients = [item.strip() for item in RESEND_TO_EMAIL.split(",") if item.strip()]
+    response = requests.post(
+        f"{RESEND_API_BASE.rstrip('/')}/emails",
+        headers={
+            "Authorization": f"Bearer {RESEND_API_KEY}",
+            "Content-Type": "application/json",
+        },
+        json={
+            "from": RESEND_FROM_EMAIL,
+            "to": recipients,
+            "subject": f"{EMAIL_SUBJECT_PREFIX} {day} brief #{brief_id}",
+            "text": build_email_body(day, brief_id, model, brief_json, raw_response),
+        },
+        timeout=RESEND_TIMEOUT_SEC,
+    )
+    if not response.ok:
+        details = response.text.strip()
+        try:
+            payload = response.json()
+            if isinstance(payload, dict):
+                details = str(payload.get("message") or payload)
+        except ValueError:
+            pass
+        raise RuntimeError(f"Resend API error {response.status_code}: {details}")
     return True
 
 
@@ -789,13 +788,13 @@ def main():
         conn.commit()
 
     try:
-        sent = send_brief_to_telegram(day, brief_id, OPENAI_MODEL, brief_json, raw_response)
+        sent = send_brief_to_email(day, brief_id, OPENAI_MODEL, brief_json, raw_response)
         if sent:
-            print(f"Telegram message sent for brief #{brief_id}")
+            print(f"Email sent for brief #{brief_id}")
         else:
-            print("Telegram send skipped: TELEGRAM_BOT_TOKEN or TELEGRAM_CHAT_ID is not set")
+            print("Email send skipped: RESEND_API_KEY, RESEND_FROM_EMAIL or RESEND_TO_EMAIL is not set")
     except Exception as e:
-        print(f"Telegram send failed: {type(e).__name__}: {e}")
+        print(f"Email send failed: {type(e).__name__}: {e}")
 
     print(f"Generated GPT brief #{brief_id} for {day} into Postgres table daily_briefs")
 
