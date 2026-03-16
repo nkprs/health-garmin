@@ -1,7 +1,7 @@
 # Garmin Export Pipeline
 
 ETL-пайплайн для Garmin Connect:
-1. выгрузка JSON (`summary`, `sleep`, `stress`, `hrv`, `activities_0_20`) в `data/YYYY-MM-DD`
+1. выгрузка JSON (`summary`, `sleep`, `stress`, `heart_rate`, `hrv`, `activities_0_20`) в `data/YYYY-MM-DD`
 2. загрузка raw JSON в Postgres (`garmin_raw`)
 3. расчет daily features для анализа (`daily_features`)
 4. генерация ежедневного GPT-brief (`daily_briefs`)

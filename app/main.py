@@ -7,6 +7,16 @@ from garminconnect import Garmin
 
 OUT_DIR = os.getenv("OUT_DIR", "/data")
 
+
+def fetch_heart_rate(client: Garmin, day: str):
+    # The library has exposed heart-rate endpoints under slightly different names
+    # across releases, so try known variants in order.
+    for method_name in ("get_heart_rates", "get_heart_rate_data", "get_heart_rate"):
+        method = getattr(client, method_name, None)
+        if callable(method):
+            return method(day)
+    raise AttributeError("Garmin client has no supported heart-rate method")
+
 def dump_json(path: str, payload):
     os.makedirs(os.path.dirname(path), exist_ok=True)
     with open(path, "w", encoding="utf-8") as f:
@@ -53,6 +63,10 @@ def main():
         # Stress
         stress = safe_call(lambda: client.get_stress_data(ds), "get_stress_data")
         dump_json(os.path.join(base, "stress.json"), stress)
+
+        # Heart rate
+        heart_rate = safe_call(lambda: fetch_heart_rate(client, ds), "get_heart_rates")
+        dump_json(os.path.join(base, "heart_rate.json"), heart_rate)
 
         # HRV (может не отдаваться на некоторых аккаунтах/днях)
         hrv = safe_call(lambda: client.get_hrv_data(ds), "get_hrv_data")

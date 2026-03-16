@@ -15,7 +15,7 @@ DDL = """
 CREATE TABLE IF NOT EXISTS garmin_raw (
   id bigserial PRIMARY KEY,
   day date NOT NULL,
-  source text NOT NULL,         -- summary/sleep/stress/hrv/activities
+  source text NOT NULL,         -- summary/sleep/stress/heart_rate/hrv/activities
   fetched_at timestamptz NOT NULL DEFAULT now(),
   payload jsonb NOT NULL,
   UNIQUE(day, source)
@@ -72,7 +72,7 @@ def main():
                 continue
 
             for file in sorted(day_dir.glob("*.json")):
-                source = file.stem  # summary, sleep, stress, hrv, activities_0_20
+                source = file.stem  # summary, sleep, stress, heart_rate, hrv, activities_0_20
                 try:
                     payload = json.loads(file.read_text(encoding="utf-8"))
                 except Exception as e:
